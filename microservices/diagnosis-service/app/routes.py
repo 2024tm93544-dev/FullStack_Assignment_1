@@ -6,9 +6,17 @@ from .db import dtc_catalog, reports
 from .models import DTCIn, DTCOut, ReportIn, ReportOut
 from .rules import diagnose
 from .security import require_user
+from bson import ObjectId
+from bson.errors import InvalidId
+from .models import DTCIn, DTCOut, ReportIn, ReportOut, ReportUpdate
 
 router = APIRouter()
 
+def _oid(value: str) -> ObjectId: 
+    try:
+        return ObjectId(value)
+    except InvalidId:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "invalid id")
 
 def _dtc_out(doc) -> DTCOut:
     return DTCOut(
@@ -28,7 +36,13 @@ def _report_out(doc) -> ReportOut:
         symptoms=doc.get("symptoms"),
         probable_cause=doc["probable_cause"],
         recommended_action=doc["recommended_action"],
+        status=doc.get("status", "pending"),  
+        mechanic_id=doc.get("mechanic_id"),  
+        before_photo=doc.get("before_photo"),  
+        after_photo=doc.get("after_photo"),  
+        mechanic_notes=doc.get("mechanic_notes"),  
         created_at=doc["created_at"],
+        updated_at=doc.get("updated_at"),  
     )
 
 
@@ -91,14 +105,16 @@ async def submit_report(body: ReportIn, user=Depends(require_user)):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "provide dtc or symptoms")
     cause, action = await diagnose(dtc_catalog(), body.dtc, body.symptoms)
     doc = {
-        "vehicle_id": body.vehicle_id,
-        "owner_id": user["id"],
-        "dtc": body.dtc.upper().strip() if body.dtc else None,
-        "symptoms": body.symptoms,
-        "probable_cause": cause,
-        "recommended_action": action,
-        "created_at": datetime.now(timezone.utc),
-    }
+    "vehicle_id": body.vehicle_id,
+    "owner_id": user["id"],
+    "dtc": body.dtc.upper().strip() if body.dtc else None,
+    "symptoms": body.symptoms,
+    "probable_cause": cause,
+    "recommended_action": action,
+    "status": "pending", 
+    "before_photo": body.before_photo,  
+    "created_at": datetime.now(timezone.utc),
+}
     res = await reports().insert_one(doc)
     doc["_id"] = res.inserted_id
     return _report_out(doc)
@@ -106,12 +122,38 @@ async def submit_report(body: ReportIn, user=Depends(require_user)):
 
 @router.get("/reports", response_model=list[ReportOut])
 async def list_reports(
-    vehicle_id: str = Query(..., min_length=1),
+    vehicle_id: str = Query(None),  
     user=Depends(require_user),
 ):
     # Drivers see their own; mechanics and admins can read any vehicle.
-    query: dict = {"vehicle_id": vehicle_id}
+    query: dict = {}  
+    
+    if vehicle_id:  
+        query["vehicle_id"] = vehicle_id
+    
     if user["role"] == "driver":
         query["owner_id"] = user["id"]
+    
     cur = reports().find(query).sort("created_at", -1)
     return [_report_out(d) async for d in cur]
+
+
+@router.put("/reports/{report_id}", response_model=ReportOut)
+async def update_report(report_id: str, body: ReportUpdate, user=Depends(require_user)):
+    """Mechanic/Admin updates report with repair photos and status."""
+    doc = await reports().find_one({"_id": _oid(report_id)})
+    if not doc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "report not found")
+    
+    # Only owner, mechanic assigned, or admin can update
+    if user["role"] == "driver" and doc["owner_id"] != user["id"]:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "not your report")
+    if user["role"] == "mechanic" and doc.get("mechanic_id") != user["id"]:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "not assigned to you")
+    
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    patch["updated_at"] = datetime.now(timezone.utc)
+    
+    await reports().update_one({"_id": doc["_id"]}, {"$set": patch})
+    doc.update(patch)
+    return _report_out(doc)
