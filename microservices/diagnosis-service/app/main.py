@@ -15,6 +15,8 @@ async def ensure_indexes():
     await dtc_catalog().create_index("code", unique=True)
     await reports().create_index("vehicle_id")
     await reports().create_index("owner_id")
+    await reports().create_index("status")        
+    await reports().create_index("mechanic_id")   
 
 
 @app.get("/health")

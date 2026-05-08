@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
+from enum import Enum
+from typing import Optional
 
 
 class DTCIn(BaseModel):
@@ -21,6 +23,22 @@ class ReportIn(BaseModel):
     vehicle_id: str = Field(min_length=1)
     dtc: Optional[str] = Field(default=None, max_length=10)
     symptoms: Optional[str] = Field(default=None, max_length=500)
+    before_photo: Optional[str] = None
+
+
+class RepairStatus(str, Enum):
+    PENDING = "pending"
+    MECHANIC_ASSIGNED = "mechanic_assigned"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class ReportUpdate(BaseModel):
+    status: Optional[RepairStatus] = None
+    mechanic_id: Optional[str] = None
+    before_photo: Optional[str] = None  
+    after_photo: Optional[str] = None   
+    mechanic_notes: Optional[str] = None
 
 
 class ReportOut(BaseModel):
@@ -31,4 +49,10 @@ class ReportOut(BaseModel):
     symptoms: Optional[str] = None
     probable_cause: str
     recommended_action: str
+    status: RepairStatus = RepairStatus.PENDING
+    mechanic_id: Optional[str] = None
+    before_photo: Optional[str] = None
+    after_photo: Optional[str] = None
+    mechanic_notes: Optional[str] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None

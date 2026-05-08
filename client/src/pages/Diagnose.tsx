@@ -1,143 +1,198 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
+import { useState, useEffect } from "react";
+import { api, loadSession } from "../api";
 
-type Vehicle = { id: string; vin: string; make: string; model: string; year: number };
-
-type Report = {
+interface Vehicle {
   id: string;
-  vehicle_id: string;
-  dtc?: string | null;
-  symptoms?: string | null;
+  vin: string;
+  make: string;
+  model: string;
+  year: number;
+}
+
+interface DiagnoseResult {
   probable_cause: string;
   recommended_action: string;
-  created_at: string;
-};
+}
 
-export default function Diagnose() {
+ export function Diagnose() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [vehicleId, setVehicleId] = useState("");
-  const [dtc, setDtc] = useState("");
-  const [symptoms, setSymptoms] = useState("");
-  const [latest, setLatest] = useState<Report | null>(null);
-  const [history, setHistory] = useState<Report[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<string>("");
+  const [code, setCode] = useState<string>("");
+  const [symptoms, setSymptoms] = useState<string>("");
+  const [beforePhoto, setBeforePhoto] = useState<string>("");
+  const [result, setResult] = useState<DiagnoseResult | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const session = loadSession();
 
   useEffect(() => {
-    api.get<Vehicle[]>("/vehicles").then((r) => {
-      setVehicles(r.data);
-      if (r.data.length > 0) setVehicleId(r.data[0].id);
-    });
+    fetchVehicles();
+    fetchHistory();
   }, []);
 
-  useEffect(() => {
-    if (!vehicleId) return;
-    api
-      .get<Report[]>("/diagnosis/reports", { params: { vehicle_id: vehicleId } })
-      .then((r) => setHistory(r.data))
-      .catch(() => setHistory([]));
-  }, [vehicleId, latest]);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!vehicleId) {
-      setError("Add a vehicle first");
-      return;
-    }
-    if (!dtc.trim() && !symptoms.trim()) {
-      setError("Enter a DTC or describe the symptoms");
-      return;
-    }
-    setBusy(true);
+  const fetchVehicles = async () => {
     try {
-      const res = await api.post<Report>("/diagnosis/reports", {
-        vehicle_id: vehicleId,
-        dtc: dtc.trim() || null,
-        symptoms: symptoms.trim() || null,
-      });
-      setLatest(res.data);
-      setDtc("");
-      setSymptoms("");
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message);
-    } finally {
-      setBusy(false);
+      const res = await api.get("/vehicles");
+      setVehicles(res.data);
+    } catch (err) {
+      console.error("Failed to fetch vehicles", err);
     }
-  }
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const res = await api.get("/diagnosis/reports");
+      setHistory(res.data);
+    } catch (err) {
+      console.error("Failed to fetch history", err);
+    }
+  };
+
+  const handleDiagnose = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedVehicle || (!code && !symptoms)) {
+      alert("Select vehicle and enter code or symptoms");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.post("/diagnosis/reports", {
+        vehicle_id: selectedVehicle,
+        dtc: code || undefined,
+        symptoms: symptoms || undefined,
+        before_photo: beforePhoto || undefined,
+      });
+
+      setResult({
+        probable_cause: res.data.probable_cause,
+        recommended_action: res.data.recommended_action,
+      });
+
+      // Clear form
+      setCode("");
+      setSymptoms("");
+      setBeforePhoto("");
+
+      // Refresh history
+      fetchHistory();
+    } catch (err) {
+      console.error("Diagnosis failed", err);
+      alert("Failed to get diagnosis");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div>
-      <h2>Diagnose</h2>
+    <div className="muted-container">
+      <h2>Vehicle Diagnosis</h2>
 
-      <div className="card">
-        <form onSubmit={submit}>
-          <label>Vehicle</label>
-          <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-            {vehicles.length === 0 && <option value="">(no vehicles)</option>}
+      <form onSubmit={handleDiagnose} className="card">
+        <div>
+          <label>Select Vehicle:</label>
+          <select
+            value={selectedVehicle}
+            onChange={(e) => setSelectedVehicle(e.target.value)}
+            required
+          >
+            <option value="">-- Choose a vehicle --</option>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.year} {v.make} {v.model} ({v.vin})
               </option>
             ))}
           </select>
+        </div>
 
-          <label>OBD-II code (optional)</label>
+        <div style={{ marginTop: 10 }}>
+          <label>Trouble Code (e.g., P0301):</label>
           <input
-            placeholder="e.g. P0301"
-            value={dtc}
-            onChange={(e) => setDtc(e.target.value.toUpperCase())}
-            maxLength={10}
+            type="text"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Optional"
           />
+        </div>
 
-          <label>Symptoms (optional)</label>
-          <textarea
-            rows={3}
-            placeholder="e.g. engine shaking at idle and check engine light on"
+        <div style={{ marginTop: 10 }}>
+          <label>Symptoms (e.g., engine shaking):</label>
+          <input
+            type="text"
             value={symptoms}
             onChange={(e) => setSymptoms(e.target.value)}
+            placeholder="Optional"
           />
+        </div>
 
-          {error && <p className="error">{error}</p>}
-          <div style={{ marginTop: 12 }}>
-            <button className="primary" disabled={busy}>
-              {busy ? "..." : "Get suggestion"}
-            </button>
-          </div>
-        </form>
-      </div>
+        <div style={{ marginTop: 10 }}>
+          <label>Before Photo (issue proof):</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              if (e.target.files) {
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                  setBeforePhoto(evt.target?.result as string);
+                };
+                reader.readAsDataURL(e.target.files[0]);
+              }
+            }}
+          />
+          {beforePhoto && (
+            <img
+              src={beforePhoto}
+              alt="preview"
+              style={{ maxWidth: 150, marginTop: 10 }}
+            />
+          )}
+        </div>
 
-      {latest && (
-        <div className="card">
-          <h3>Latest result</h3>
-          <p><strong>Probable cause:</strong> {latest.probable_cause}</p>
-          <p><strong>Recommended action:</strong> {latest.recommended_action}</p>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ marginTop: 15 }}
+        >
+          {loading ? "Getting suggestion..." : "Get Suggestion"}
+        </button>
+      </form>
+
+      {result && (
+        <div className="card" style={{ marginTop: 20, backgroundColor: "#f0f0f0" }}>
+          <h3>Diagnosis Result</h3>
+          <p>
+            <strong>Probable Cause:</strong> {result.probable_cause}
+          </p>
+          <p>
+            <strong>Recommended Action:</strong> {result.recommended_action}
+          </p>
         </div>
       )}
 
-      <div className="card">
+      <div style={{ marginTop: 20 }}>
         <h3>History</h3>
         {history.length === 0 ? (
-          <p className="muted">No reports yet for this vehicle.</p>
+          <p>No diagnosis history</p>
         ) : (
-          <table>
+          <table className="table">
             <thead>
               <tr>
-                <th>When</th>
-                <th>DTC</th>
+                <th>Code</th>
                 <th>Symptoms</th>
                 <th>Cause</th>
                 <th>Action</th>
+                <th>Date</th>
               </tr>
             </thead>
             <tbody>
-              {history.map((r) => (
-                <tr key={r.id}>
-                  <td>{new Date(r.created_at).toLocaleString()}</td>
-                  <td>{r.dtc || "-"}</td>
-                  <td>{r.symptoms || "-"}</td>
-                  <td>{r.probable_cause}</td>
-                  <td>{r.recommended_action}</td>
+              {history.map((h) => (
+                <tr key={h.id}>
+                  <td>{h.dtc || "-"}</td>
+                  <td>{h.symptoms || "-"}</td>
+                  <td>{h.probable_cause}</td>
+                  <td>{h.recommended_action}</td>
+                  <td>{new Date(h.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -147,3 +202,4 @@ export default function Diagnose() {
     </div>
   );
 }
+
