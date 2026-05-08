@@ -13,3 +13,7 @@ def get_db():
 
 def dtc_catalog():
     return get_db()["dtc_catalog"]
+
+
+def reports():
+    return get_db()["reports"]
