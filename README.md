@@ -38,9 +38,6 @@ microservices/
   vehicle-service/       vehicle CRUD (8002)
   diagnosis-service/     DTC catalog, reports, rule engine (8003)
   scripts/               run_all.ps1, run_all.sh, seed_dtc.py
-INSTRUCTIONS.md          install / run guide
-documentation.md         assignment write-up
-workingsteps.md          commit-by-commit walkthrough
 ```
 
 ---
