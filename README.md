@@ -45,8 +45,3 @@ workingsteps.md          commit-by-commit walkthrough
 
 ---
 
-
-## Documentation
-
-- [documentation.md](documentation.md) — full assignment write-up
-- [workingsteps.md](workingsteps.md) — commit-by-commit walkthrough
