@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from .db import dtc_catalog, reports
@@ -122,7 +122,7 @@ async def submit_report(body: ReportIn, user=Depends(require_user)):
 
 @router.get("/reports", response_model=list[ReportOut])
 async def list_reports(
-    vehicle_id: str = Query(None),  
+    vehicle_id: Optional[str] =  Query(default=None),  
     user=Depends(require_user),
 ):
     # Drivers see their own; mechanics and admins can read any vehicle.
@@ -140,20 +140,17 @@ async def list_reports(
 
 @router.put("/reports/{report_id}", response_model=ReportOut)
 async def update_report(report_id: str, body: ReportUpdate, user=Depends(require_user)):
-    """Mechanic/Admin updates report with repair photos and status."""
     doc = await reports().find_one({"_id": _oid(report_id)})
     if not doc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "report not found")
-    
-    # Only owner, mechanic assigned, or admin can update
-    if user["role"] == "driver" and doc["owner_id"] != user["id"]:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "not your report")
-    if user["role"] == "mechanic" and doc.get("mechanic_id") != user["id"]:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "not assigned to you")
-    
+
+    # Only mechanic and admin can update reports
+    if user["role"] not in ("mechanic", "admin"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "not authorized")
+
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     patch["updated_at"] = datetime.now(timezone.utc)
-    
+
     await reports().update_one({"_id": doc["_id"]}, {"$set": patch})
     doc.update(patch)
     return _report_out(doc)
