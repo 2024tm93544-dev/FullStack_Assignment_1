@@ -85,7 +85,7 @@ interface DiagnoseResult {
   };
 
   return (
-    <div className="muted-container">
+    <div className="container">
       <h2>Vehicle Diagnosis</h2>
 
       <form onSubmit={handleDiagnose} className="card">
@@ -105,7 +105,7 @@ interface DiagnoseResult {
           </select>
         </div>
 
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 16 }}>
           <label>Trouble Code (e.g., P0301):</label>
           <input
             type="text"
@@ -115,7 +115,7 @@ interface DiagnoseResult {
           />
         </div>
 
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 16 }}>
           <label>Symptoms (e.g., engine shaking):</label>
           <input
             type="text"
@@ -125,7 +125,7 @@ interface DiagnoseResult {
           />
         </div>
 
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 16 }}>
           <label>Before Photo (issue proof):</label>
           <input
             type="file"
@@ -150,21 +150,22 @@ interface DiagnoseResult {
         </div>
 
         <button
+          className="primary"
           type="submit"
           disabled={loading}
-          style={{ marginTop: 15 }}
+          style={{ marginTop: 20 }}
         >
           {loading ? "Getting suggestion..." : "Get Suggestion"}
         </button>
       </form>
 
       {result && (
-        <div className="card" style={{ marginTop: 20, backgroundColor: "#f0f0f0" }}>
-          <h3>Diagnosis Result</h3>
-          <p>
+        <div className="card" style={{ marginTop: 24, borderLeft: "4px solid var(--success)", backgroundColor: "var(--bg-light)" }}>
+          <h3 style={{ marginTop: 0, color: "var(--success)" }}>✓ Diagnosis Result</h3>
+          <p style={{ marginBottom: 0 }}>
             <strong>Probable Cause:</strong> {result.probable_cause}
           </p>
-          <p>
+          <p style={{ marginTop: 12 }}>
             <strong>Recommended Action:</strong> {result.recommended_action}
           </p>
         </div>

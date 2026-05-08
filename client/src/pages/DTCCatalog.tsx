@@ -63,8 +63,8 @@ export default function DTCCatalog({ session }: { session: Session }) {
   }
 
   return (
-    <div>
-      <h2>DTC catalog</h2>
+    <div className="container">
+      <h2>DTC Catalog</h2>
 
       {isAdmin && (
         <div className="card">
@@ -98,8 +98,8 @@ export default function DTCCatalog({ session }: { session: Session }) {
               required
             />
             {error && <p className="error">{error}</p>}
-            <div style={{ marginTop: 12 }}>
-              <button className="primary">{editing ? "Save" : "Add"}</button>{" "}
+            <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
+              <button className="primary">{editing ? "Save" : "Add"}</button>
               {editing && (
                 <button type="button" onClick={() => { setEditing(null); setDraft(empty); }}>
                   Cancel
