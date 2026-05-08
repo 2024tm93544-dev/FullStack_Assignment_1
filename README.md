@@ -45,11 +45,6 @@ workingsteps.md          commit-by-commit walkthrough
 
 ---
 
-## Getting Started
-
-See [INSTRUCTIONS.md](INSTRUCTIONS.md) for the full install and run guide.
-
----
 
 ## Documentation
 
