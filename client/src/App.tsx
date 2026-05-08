@@ -1,15 +1,20 @@
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { clearSession, loadSession, Session } from "./api";
 import Login from "./pages/Login";
+import Vehicles from "./pages/Vehicles";
 
-function Home({ session, onLogout }: { session: Session; onLogout: () => void }) {
+function TopBar({ session, onLogout }: { session: Session; onLogout: () => void }) {
+  const loc = useLocation();
+  const cls = (path: string) => (loc.pathname.startsWith(path) ? "active" : "");
   return (
-    <div className="container">
-      <h2>Signed in as {session.name} ({session.role})</h2>
-      <p className="muted">More features arrive in later commits.</p>
+    <nav className="topbar">
+      <strong>Smart Car Diagnosis</strong>
+      <Link to="/vehicles" className={cls("/vehicles")}>Vehicles</Link>
+      <span className="spacer" />
+      <span className="who">{session.name} ({session.role})</span>
       <button onClick={onLogout}>Logout</button>
-    </div>
+    </nav>
   );
 }
 
@@ -36,8 +41,14 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="*" element={<Home session={session} onLogout={handleLogout} />} />
-    </Routes>
+    <>
+      <TopBar session={session} onLogout={handleLogout} />
+      <div className="container">
+        <Routes>
+          <Route path="/vehicles" element={<Vehicles />} />
+          <Route path="*" element={<Navigate to="/vehicles" replace />} />
+        </Routes>
+      </div>
+    </>
   );
 }
