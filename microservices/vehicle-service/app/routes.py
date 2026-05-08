@@ -50,7 +50,13 @@ async def create(body: VehicleIn, user=Depends(require_user)):
 
 @router.get("", response_model=list[VehicleOut])
 async def list_mine(user=Depends(require_user)):
-    cur = vehicles().find({"owner_id": user["id"]}).sort("created_at", -1)
+    # Drivers see only own vehicles; mechanics/admins see all
+    if user["role"] == "driver":
+        query = {"owner_id": user["id"]}
+    else:
+        query = {}  # Empty query = return all
+    
+    cur = vehicles().find(query).sort("created_at", -1)
     return [_to_out(d) async for d in cur]
 
 

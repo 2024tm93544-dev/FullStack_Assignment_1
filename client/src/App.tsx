@@ -4,7 +4,8 @@ import { clearSession, loadSession, Session } from "./api";
 import Login from "./pages/Login";
 import Vehicles from "./pages/Vehicles";
 import DTCCatalog from "./pages/DTCCatalog";
-import Diagnose from "./pages/Diagnose";
+import {Diagnose} from "./pages/Diagnose";
+import { Reports } from "./pages/Reports";
 
 function TopBar({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const loc = useLocation();
@@ -15,6 +16,7 @@ function TopBar({ session, onLogout }: { session: Session; onLogout: () => void 
       <Link to="/vehicles" className={cls("/vehicles")}>Vehicles</Link>
       <Link to="/diagnose" className={cls("/diagnose")}>Diagnose</Link>
       <Link to="/catalog" className={cls("/catalog")}>Catalog</Link>
+      <a href="/reports">Reports</a>
       <span className="spacer" />
       <span className="who">{session.name} ({session.role})</span>
       <button onClick={onLogout}>Logout</button>
@@ -52,6 +54,7 @@ export default function App() {
           <Route path="/vehicles" element={<Vehicles />} />
           <Route path="/diagnose" element={<Diagnose />} />
           <Route path="/catalog" element={<DTCCatalog session={session} />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="*" element={<Navigate to="/vehicles" replace />} />
         </Routes>
       </div>

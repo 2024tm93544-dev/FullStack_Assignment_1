@@ -17,3 +17,4 @@ def dtc_catalog():
 
 def reports():
     return get_db()["reports"]
+
