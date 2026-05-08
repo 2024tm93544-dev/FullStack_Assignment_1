@@ -1,10 +1,15 @@
-"""Seed data for the DTC catalog. Loaded by scripts/seed_dtc.py.
+"""Rule engine for diagnostic suggestions.
 
-The rule engine itself (symptoms keyword match, diagnose() function)
-is added in the next commit. At this stage we only need the data so the
-catalog has something to display.
+Given an OBD-II DTC code and/or a free-text symptoms string, return a
+probable cause and a recommended action. The DTC catalog lives in MongoDB
+and is the primary source. Symptoms are matched against a small keyword
+table for cases where the user does not have a code.
 """
 
+from typing import Optional
+
+
+# Seed data for the DTC catalog. Loaded by scripts/seed_dtc.py.
 DTC_SEED: list[dict] = [
     {
         "code": "P0300",
@@ -67,3 +72,74 @@ DTC_SEED: list[dict] = [
         "recommended_action": "Clean throttle body; smoke test for vacuum leaks.",
     },
 ]
+
+
+# Keyword -> (probable cause, recommended action)
+SYMPTOM_RULES: list[tuple[list[str], str, str]] = [
+    (
+        ["misfire", "shaking", "rough idle", "stutter"],
+        "Possible ignition or fuel delivery problem causing a misfire.",
+        "Scan for DTCs; inspect spark plugs, coils, and fuel injectors.",
+    ),
+    (
+        ["overheat", "hot", "temperature high", "steam"],
+        "Cooling system fault: low coolant, failing thermostat, or bad water pump.",
+        "Stop driving. Check coolant level and look for leaks; pressure test the system.",
+    ),
+    (
+        ["check engine", "engine light", "cel"],
+        "Generic ECU fault. The exact cause requires a DTC scan.",
+        "Use an OBD-II scanner to read the trouble code, then re-submit it here.",
+    ),
+    (
+        ["smoke", "burning smell", "white smoke", "blue smoke"],
+        "Possible oil or coolant burning in the combustion chamber.",
+        "Check oil and coolant levels; have a mechanic inspect for head gasket failure.",
+    ),
+    (
+        ["battery", "won't start", "wont start", "no crank", "click"],
+        "Likely a weak battery, bad starter, or loose terminal.",
+        "Test battery voltage; clean terminals; load-test the starter.",
+    ),
+    (
+        ["brake", "squeal", "grinding", "soft pedal"],
+        "Brake wear or hydraulic problem.",
+        "Inspect pads, rotors, and brake fluid level immediately.",
+    ),
+    (
+        ["transmission", "slipping", "shift", "jerk"],
+        "Transmission fluid level or solenoid issue.",
+        "Check transmission fluid level and condition; have it scanned for codes.",
+    ),
+]
+
+
+def _match_symptoms(symptoms: str) -> Optional[tuple[str, str]]:
+    text = symptoms.lower()
+    for keywords, cause, action in SYMPTOM_RULES:
+        if any(k in text for k in keywords):
+            return cause, action
+    return None
+
+
+async def diagnose(
+    dtc_collection,
+    dtc: Optional[str],
+    symptoms: Optional[str],
+) -> tuple[str, str]:
+    """Return (probable_cause, recommended_action). Never raises - always
+    returns something usable so the user gets a response."""
+    if dtc:
+        doc = await dtc_collection.find_one({"code": dtc.upper().strip()})
+        if doc:
+            return doc["probable_cause"], doc["recommended_action"]
+
+    if symptoms:
+        match = _match_symptoms(symptoms)
+        if match:
+            return match
+
+    return (
+        "Not enough information to identify a specific cause.",
+        "Provide a valid OBD-II code or describe the symptoms in more detail.",
+    )

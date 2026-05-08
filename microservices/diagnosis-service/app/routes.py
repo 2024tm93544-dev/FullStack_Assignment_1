@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timezone
 
-from .db import dtc_catalog
-from .models import DTCIn, DTCOut
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from .db import dtc_catalog, reports
+from .models import DTCIn, DTCOut, ReportIn, ReportOut
+from .rules import diagnose
 from .security import require_user
 
 router = APIRouter()
@@ -15,6 +18,21 @@ def _dtc_out(doc) -> DTCOut:
         recommended_action=doc["recommended_action"],
     )
 
+
+def _report_out(doc) -> ReportOut:
+    return ReportOut(
+        id=str(doc["_id"]),
+        vehicle_id=doc["vehicle_id"],
+        owner_id=doc["owner_id"],
+        dtc=doc.get("dtc"),
+        symptoms=doc.get("symptoms"),
+        probable_cause=doc["probable_cause"],
+        recommended_action=doc["recommended_action"],
+        created_at=doc["created_at"],
+    )
+
+
+# ------------ DTC catalog (admin manages, anyone can read) ------------
 
 @router.get("/dtc", response_model=list[DTCOut])
 async def list_dtc(user=Depends(require_user)):
@@ -63,3 +81,37 @@ async def delete_dtc(code: str, user=Depends(require_user)):
     if res.deleted_count == 0:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "code not found")
     return None
+
+
+# ------------ Reports ------------
+
+@router.post("/reports", response_model=ReportOut, status_code=201)
+async def submit_report(body: ReportIn, user=Depends(require_user)):
+    if not body.dtc and not body.symptoms:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "provide dtc or symptoms")
+    cause, action = await diagnose(dtc_catalog(), body.dtc, body.symptoms)
+    doc = {
+        "vehicle_id": body.vehicle_id,
+        "owner_id": user["id"],
+        "dtc": body.dtc.upper().strip() if body.dtc else None,
+        "symptoms": body.symptoms,
+        "probable_cause": cause,
+        "recommended_action": action,
+        "created_at": datetime.now(timezone.utc),
+    }
+    res = await reports().insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return _report_out(doc)
+
+
+@router.get("/reports", response_model=list[ReportOut])
+async def list_reports(
+    vehicle_id: str = Query(..., min_length=1),
+    user=Depends(require_user),
+):
+    # Drivers see their own; mechanics and admins can read any vehicle.
+    query: dict = {"vehicle_id": vehicle_id}
+    if user["role"] == "driver":
+        query["owner_id"] = user["id"]
+    cur = reports().find(query).sort("created_at", -1)
+    return [_report_out(d) async for d in cur]
