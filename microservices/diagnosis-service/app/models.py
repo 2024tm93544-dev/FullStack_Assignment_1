@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -13,3 +15,20 @@ class DTCOut(BaseModel):
     title: str
     probable_cause: str
     recommended_action: str
+
+
+class ReportIn(BaseModel):
+    vehicle_id: str = Field(min_length=1)
+    dtc: Optional[str] = Field(default=None, max_length=10)
+    symptoms: Optional[str] = Field(default=None, max_length=500)
+
+
+class ReportOut(BaseModel):
+    id: str
+    vehicle_id: str
+    owner_id: str
+    dtc: Optional[str] = None
+    symptoms: Optional[str] = None
+    probable_cause: str
+    recommended_action: str
+    created_at: datetime
