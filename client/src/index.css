@@ -1,0 +1,16 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background: #f6f7f9;
+  color: #222;
+}
+.container { max-width: 880px; margin: 0 auto; padding: 24px 16px; }
+.muted { color: #6b7280; font-size: 0.9rem; }
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
