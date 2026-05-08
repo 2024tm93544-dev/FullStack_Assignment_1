@@ -9,7 +9,7 @@ load_dotenv()
 from .proxy import forward  # noqa: E402
 from .security import require_user  # noqa: E402
 
-app = FastAPI(title="api-gateway", version="0.3.0")
+app = FastAPI(title="api-gateway", version="0.4.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,3 +41,9 @@ def _identity_headers(claims: dict) -> dict[str, str]:
 async def vehicles_route(path: str, request: Request):
     claims = require_user(request)
     return await forward(request, "vehicles", "/vehicles" + path, _identity_headers(claims))
+
+
+@app.api_route("/diagnosis/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def diagnosis_route(path: str, request: Request):
+    claims = require_user(request)
+    return await forward(request, "diagnosis", "/" + path, _identity_headers(claims))

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { clearSession, loadSession, Session } from "./api";
 import Login from "./pages/Login";
 import Vehicles from "./pages/Vehicles";
+import DTCCatalog from "./pages/DTCCatalog";
 
 function TopBar({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const loc = useLocation();
@@ -11,6 +12,7 @@ function TopBar({ session, onLogout }: { session: Session; onLogout: () => void 
     <nav className="topbar">
       <strong>Smart Car Diagnosis</strong>
       <Link to="/vehicles" className={cls("/vehicles")}>Vehicles</Link>
+      <Link to="/catalog" className={cls("/catalog")}>Catalog</Link>
       <span className="spacer" />
       <span className="who">{session.name} ({session.role})</span>
       <button onClick={onLogout}>Logout</button>
@@ -46,6 +48,7 @@ export default function App() {
       <div className="container">
         <Routes>
           <Route path="/vehicles" element={<Vehicles />} />
+          <Route path="/catalog" element={<DTCCatalog session={session} />} />
           <Route path="*" element={<Navigate to="/vehicles" replace />} />
         </Routes>
       </div>
