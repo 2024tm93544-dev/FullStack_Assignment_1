@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Node / Vite
+node_modules/
+dist/
+.cache/
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+microservices/logs/
+
+# Assignment artefacts that should never be committed
+*.docx
+~$*
+claude/
+workingsteps.zip
