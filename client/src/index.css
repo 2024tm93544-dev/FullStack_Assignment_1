@@ -6,7 +6,26 @@ body {
   color: #222;
 }
 .container { max-width: 880px; margin: 0 auto; padding: 24px 16px; }
-.muted { color: #6b7280; font-size: 0.9rem; }
+
+button {
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+input, select, textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+label { display: block; margin: 8px 0 4px; font-size: 0.9rem; color: #374151; }
+
 .card {
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -14,3 +33,5 @@ body {
   padding: 16px;
   margin-bottom: 12px;
 }
+.error { color: #b91c1c; margin: 8px 0; }
+.muted { color: #6b7280; font-size: 0.9rem; }
