@@ -1,31 +1,57 @@
 # Smart Car Diagnosis System
 
-A small full-stack web app where a vehicle owner can register a car, submit
-either an OBD-II trouble code or a description of symptoms, and get back a
-probable cause and a recommended action. A history of reports is kept for
-each vehicle.
+A full-stack web application where a vehicle owner registers a car, submits either an OBD-II trouble code (e.g. `P0301`) or a description of symptoms, and gets back a probable cause and a recommended action. A history of reports is kept per vehicle.
 
-The backend is split into independent microservices that sit behind a single
-API gateway. The frontend is a small React single-page app that only ever
-talks to the gateway.
+---
 
-## Tech
+## Architecture
 
-- Python 3.11, FastAPI, Motor (async MongoDB driver), PyJWT, passlib[bcrypt], httpx
-- MongoDB Community on `localhost:27017`
-- React 18, Vite, TypeScript, axios, react-router-dom
+The React client talks to a single **API Gateway** (port 8000), which is the only publicly exposed endpoint. The gateway verifies the JWT and forwards the user identity to three internal services:
 
-## Layout
+- **Auth Service** (8001) — handles registration and login
+- **Vehicle Service** (8002) — manages vehicle records
+- **Diagnosis Service** (8003) — runs the rule engine and stores reports
+
+Each service has its own MongoDB database (`scds_auth`, `scds_vehicle`, `scds_diagnosis`) all running on the same MongoDB instance at port 27017.
+
+Each service owns its own data and only the gateway is meant to be publicly exposed. The downstream services trust two identity headers the gateway sets after JWT verification.
+
+---
+
+## Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| **Backend** | Python 3.11, FastAPI, Motor, PyJWT, passlib[bcrypt], httpx |
+| **Database** | MongoDB Community on `localhost:27017` |
+| **Frontend** | React 18, Vite, TypeScript, axios, react-router-dom |
+
+---
+
+## Repository Layout
 
 ```
-client/           React frontend (port 5173)
+client/                  React frontend (port 5173)
 microservices/
-  api-gateway/    single public entrypoint (port 8000)
+  api-gateway/           public entrypoint (8000)
+  auth-service/          users, JWT (8001)
+  vehicle-service/       vehicle CRUD (8002)
+  diagnosis-service/     DTC catalog, reports, rule engine (8003)
+  scripts/               run_all.ps1, run_all.sh, seed_dtc.py
+INSTRUCTIONS.md          install / run guide
+documentation.md         assignment write-up
+workingsteps.md          commit-by-commit walkthrough
 ```
 
-This is the **scaffold** commit. Only the gateway and the React shell exist
-at this point. The shell pings `/health` on the gateway so the integration
-between the two halves is verified end-to-end before any feature lands.
+---
 
-See [INSTRUCTIONS.md](../../INSTRUCTIONS.md) at the repo root for full setup
-and run instructions.
+## Getting Started
+
+See [INSTRUCTIONS.md](INSTRUCTIONS.md) for the full install and run guide.
+
+---
+
+## Documentation
+
+- [documentation.md](documentation.md) — full assignment write-up
+- [workingsteps.md](workingsteps.md) — commit-by-commit walkthrough
