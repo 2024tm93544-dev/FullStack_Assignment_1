@@ -30,6 +30,14 @@ def _oid(value: str) -> ObjectId:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "invalid id")
 
 
+def _can_read(doc, user) -> bool:
+    # Owner always; mechanics and admins can read any vehicle.
+    return (
+        doc["owner_id"] == user["id"]
+        or user["role"] in ("mechanic", "admin")
+    )
+
+
 @router.post("", response_model=VehicleOut, status_code=201)
 async def create(body: VehicleIn, user=Depends(require_user)):
     doc = body.model_dump()
@@ -51,7 +59,7 @@ async def get_one(vehicle_id: str, user=Depends(require_user)):
     doc = await vehicles().find_one({"_id": _oid(vehicle_id)})
     if not doc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "vehicle not found")
-    if user["role"] != "admin" and doc["owner_id"] != user["id"]:
+    if not _can_read(doc, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "not your vehicle")
     return _to_out(doc)
 
@@ -64,6 +72,7 @@ async def update(vehicle_id: str, body: VehicleUpdate, user=Depends(require_user
     doc = await vehicles().find_one({"_id": _oid(vehicle_id)})
     if not doc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "vehicle not found")
+    # Writes are owner-only even for mechanics.
     if doc["owner_id"] != user["id"]:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "not your vehicle")
     await vehicles().update_one({"_id": doc["_id"]}, {"$set": patch})
